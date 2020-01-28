@@ -4,18 +4,31 @@
 
 #include "queue.h"
 
-struct queue {
-	/* TODO Phase 1 */
+typedef struct queue Queue;
+
+struct queue 
+{
+    void* data;
+    Queue* next;
+    Queue* prev;
 };
 
 queue_t queue_create(void)
 {
-	/* TODO Phase 1 */
+    Queue HEAD = (Queue*)malloc(sizeof(Queue));
+    HEAD.data = NULL;
+    HEAD.next = NULL;
+    HEAD.prev = NULL;
+    if(!HEAD) {
+        return(NULL);
+    }
+    return(*HEAD);
+    /* Maybe add a TAIL? */
 }
 
 int queue_destroy(queue_t queue)
 {
-	/* TODO Phase 1 */
+    /* TODO Phase 1 */
 }
 
 int queue_enqueue(queue_t queue, void *data)
