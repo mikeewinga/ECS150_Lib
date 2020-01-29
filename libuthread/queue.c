@@ -8,6 +8,8 @@ typedef struct node* node_t;
 
 struct node
 {
+    /*Should we also add a variable to keep track
+    of the data type of the data?*/
     void* data;
     node_t* next;
     node_t* prev;
@@ -23,11 +25,11 @@ struct queue
 node_t node_create(void* data)
 {
     node_t n = malloc(sizeof(node_t));
-    n->data = data;
-    if (n->data == NULL) {
+    if (&data == NULL) {
         free(n);
         return(*((node_t*)NULL));
     }
+    n->data = data;
     return(n);
 }
 
@@ -84,7 +86,7 @@ int queue_dequeue(queue_t queue, void **data)
     if (queue == NULL || data == NULL || !old_node->data) {
         return(-1);
     }
-    data = &old_node->data;
+    data = old_node->data;
     if (queue->num_nodes == 1) {
         queue->head = NULL;
         queue->tail = NULL;
@@ -95,6 +97,7 @@ int queue_dequeue(queue_t queue, void **data)
         queue->head = old_node->next;
     }
     free(old_node);
+    queue->num_nodes-=1;
     return(0);
 }
 
@@ -117,6 +120,5 @@ int queue_iterate(queue_t queue, queue_func_t func, void *arg, void **data)
 
 int queue_length(queue_t queue)
 {
-    return(&queue->num_nodes);
+    return(&(queue->num_nodes));
 }
-
