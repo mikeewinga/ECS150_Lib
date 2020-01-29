@@ -103,14 +103,28 @@ int queue_dequeue(queue_t queue, void **data)
 
 int queue_delete(queue_t queue, void *data)
 {
-    /* Need to change to work with node_t 
-    node_t* next_node;
-    if (queue->next != NULL) {
-        next_q = queue->next;
-        queue_destroy(next_q);
+    if (queue == NULL || data == NULL) {
+        return(-1);
     }
-    free(queue);
-    */
+    node_t n=queue->head;
+    while(1){
+        if(n->data==data){
+            node_t n_next=n->next;
+            node_t n_prev=n->prev;
+            n_next->prev=n_prev;
+            n_prev->next=n_next;
+            free(n);
+            break;
+        }
+        else{
+            if(n->next==queue->tail){
+                return(-1);
+            }
+            n=n->next;
+            continue;
+        }
+    }
+    return(0);
 }
 
 int queue_iterate(queue_t queue, queue_func_t func, void *arg, void **data)
