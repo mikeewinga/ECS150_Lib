@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <stdio.h>
 #include "queue.h"
 
 typedef struct node* node_t;
@@ -20,7 +21,7 @@ struct queue
     int num_nodes;
 };
 
-node_t node_create(void* data)
+static node_t node_create(void* data)
 {
     node_t n = malloc(sizeof(node_t));
     if (&data == NULL) {
@@ -29,6 +30,16 @@ node_t node_create(void* data)
     }
     n->data = data;
     return(n);
+}
+
+int print_queue(queue_t queue)
+{
+    node_t n = *queue->head;
+    for(int i=0; i<queue->num_nodes; i++){
+        printf("%d\n", *((int*)n->data));
+        n = *(n->next);
+    }
+    return 0;
 }
 
 queue_t queue_create(void)
@@ -71,8 +82,8 @@ int queue_enqueue(queue_t queue, void *data)
         node_t tail_node= *queue->tail;
         new_node->prev = queue->tail;
         new_node->next = tail_node->next;
-        tail_node->next = &new_node;
-        queue->tail = &new_node;
+        tail_node->next = &(new_node);
+        queue->tail = &(new_node);
     }
     queue->num_nodes += 1;
     return(0);
@@ -99,7 +110,7 @@ int queue_dequeue(queue_t queue, void **data)
             queue->num_nodes-=1;
         }
         else{
-            old_node = old_node->next;
+            old_node = *old_node->next;
         }
     }
     return(0);
@@ -110,13 +121,13 @@ int queue_delete(queue_t queue, void *data)
     if (queue == NULL || data == NULL) {
         return(-1);
     }
-    node_t n=queue->head;
+    node_t n= *queue->head;
     while(1){
         if(n->data==data){
-            node_t n_next=n->next;
-            node_t n_prev=n->prev;
-            n_next->prev=n_prev;
-            n_prev->next=n_next;
+            node_t n_next= *(n->next);
+            node_t n_prev= *(n->prev);
+            n_next->prev= &(n_prev);
+            n_prev->next= &(n_next);
             free(n);
             break;
         }
@@ -124,7 +135,7 @@ int queue_delete(queue_t queue, void *data)
             if(n->next == queue->tail){
                 return(-1);
             }
-            n=n->next;
+            n = *(n->next);
             continue;
         }
     }
@@ -136,13 +147,13 @@ int queue_iterate(queue_t queue, queue_func_t func, void *arg, void **data)
     if(queue == NULL || func == NULL){
         return(-1);
     }
-    node_t current = queue->head;
+    node_t current = *(queue->head);
     void* output;
     while(current != NULL){
         void* node_val= current->data;
-        output = func(node_val, arg);
-        if(&output){
-            data = output;
+        int val = func(&node_val, arg);
+        if(&val){
+            *data = &val;
             return 0;
         }
     }
@@ -151,5 +162,5 @@ int queue_iterate(queue_t queue, queue_func_t func, void *arg, void **data)
 
 int queue_length(queue_t queue)
 {
-    return(&(queue->num_nodes));
+    return(queue->num_nodes);
 }

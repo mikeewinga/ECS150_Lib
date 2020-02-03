@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #include "queue.h"
 
@@ -58,6 +59,15 @@ int main(){
     for (i = 0; i < sizeof(data) / sizeof(data[0]); i++){
         queue_enqueue(q, &data[i]);
     }
+    print_queue(q);    
+
+/*
+    for (i = 0; i < 4; i+=2){
+        void* var;
+        queue_dequeue(q, var);
+        printf("Removed from queue: %d\n", *((int*)var));
+    }
+*/
 
     return 0;
 };
