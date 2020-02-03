@@ -8,8 +8,6 @@ typedef struct node* node_t;
 
 struct node
 {
-    /*Should we also add a variable to keep track
-    of the data type of the data?*/
     void* data;
     node_t* next;
     node_t* prev;
@@ -86,18 +84,24 @@ int queue_dequeue(queue_t queue, void **data)
     if (queue == NULL || data == NULL || !old_node->data) {
         return(-1);
     }
-    data = old_node->data;
-    if (queue->num_nodes == 1) {
-        queue->head = NULL;
-        queue->tail = NULL;
+    while(old_node != NULL){
+        if( data == old_node->data){
+            if (queue->num_nodes == 1) {
+                queue->head = NULL;
+                queue->tail = NULL;
+            }
+            else {
+                node_t next_oldest_node = *old_node->next;
+                next_oldest_node->prev = old_node->prev;
+                queue->head = old_node->next;
+            }
+            free(old_node);
+            queue->num_nodes-=1;
+        }
+        else{
+            old_node = old_node->next;
+        }
     }
-    else {
-        node_t next_oldest_node = *old_node->next;
-        next_oldest_node->prev = old_node->prev;
-        queue->head = old_node->next;
-    }
-    free(old_node);
-    queue->num_nodes-=1;
     return(0);
 }
 
@@ -117,7 +121,7 @@ int queue_delete(queue_t queue, void *data)
             break;
         }
         else{
-            if(n->next==queue->tail){
+            if(n->next == queue->tail){
                 return(-1);
             }
             n=n->next;
@@ -129,7 +133,20 @@ int queue_delete(queue_t queue, void *data)
 
 int queue_iterate(queue_t queue, queue_func_t func, void *arg, void **data)
 {
-    /* TODO Phase 1 */
+    if(queue == NULL || func == NULL){
+        return(-1);
+    }
+    node_t current = queue->head;
+    void* output;
+    while(current != NULL){
+        void* node_val= current->data;
+        output = func(node_val, arg);
+        if(&output){
+            data = output;
+            return 0;
+        }
+    }
+    return 0;
 }
 
 int queue_length(queue_t queue)
