@@ -29,6 +29,8 @@ static node_t node_create(void* data)
         return(*((node_t*)NULL));
     }
     n->data = data;
+    n->next = NULL;
+    n->prev = NULL;
     return(n);
 }
 
