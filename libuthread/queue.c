@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <stdio.h>
 #include "queue.h"
 
 typedef struct node* node_t;
@@ -29,19 +28,7 @@ static node_t node_create(void* data)
         return(*((node_t*)NULL));
     }
     n->data = data;
-    n->next = NULL;
-    n->prev = NULL;
     return(n);
-}
-
-int print_queue(queue_t queue)
-{
-    node_t n = *queue->head;
-    for(int i=0; i<queue->num_nodes; i++){
-        printf("%d\n", *((int*)n->data));
-        n = *(n->next);
-    }
-    return 0;
 }
 
 queue_t queue_create(void)
@@ -59,7 +46,7 @@ queue_t queue_create(void)
 
 int queue_destroy(queue_t queue)
 {
-    if (queue == NULL || queue->num_nodes != 0) {
+    if ( queue == NULL || queue->num_nodes != 0) {
         return(-1);
     }
     else {
@@ -75,16 +62,16 @@ int queue_enqueue(queue_t queue, void *data)
     }
     node_t new_node = node_create(data);
     if (queue->num_nodes == 0) {
-        new_node->prev = ((node_t*)NULL);
-        new_node->next = ((node_t*)NULL);
+        new_node->prev = NULL;
+        new_node->next = NULL;
         queue->head = &new_node;
         queue->tail = &new_node;
     }
     else {
-        node_t tail_node= *queue->tail;
-        new_node->prev = queue->tail;
-        new_node->next = tail_node->next;
-        tail_node->next = &(new_node);
+        node_t tail_node = *queue->tail;
+        new_node->prev = tail_node->prev;
+        new_node->next = &tail_node;
+        tail_node->prev = &(new_node);
         queue->tail = &(new_node);
     }
     queue->num_nodes += 1;
@@ -93,26 +80,29 @@ int queue_enqueue(queue_t queue, void *data)
 
 int queue_dequeue(queue_t queue, void **data)
 {
-    node_t old_node = *queue->head;
-    if (queue == NULL || data == NULL || !old_node->data) {
+    // node at front of the queue
+    node_t oldest_node = *queue->head;
+    if (queue == NULL || data == NULL || !oldest_node->data) {
         return(-1);
     }
-    while(old_node != NULL){
-        if( data == old_node->data){
+    for(int i=0; i <queue_length(queue); i++){
+        if( data == oldest_node->data){
             if (queue->num_nodes == 1) {
                 queue->head = NULL;
                 queue->tail = NULL;
             }
             else {
-                node_t next_oldest_node = *old_node->next;
-                next_oldest_node->prev = old_node->prev;
-                queue->head = old_node->next;
+                node_t prev_oldest_node = *oldest_node->prev;
+                node_t next_oldest_node = *oldest_node->next;
+                prev_oldest_node->next = &(next_oldest_node);
+                next_oldest_node->prev = &(prev_oldest_node);
             }
-            free(old_node);
+            free(oldest_node);
             queue->num_nodes-=1;
+            break;
         }
         else{
-            old_node = *old_node->next;
+            oldest_node = *oldest_node->prev;
         }
     }
     return(0);
@@ -150,15 +140,18 @@ int queue_iterate(queue_t queue, queue_func_t func, void *arg, void **data)
         return(-1);
     }
     node_t current = *(queue->head);
-    void* output;
-    while(current != NULL){
-        void* node_val= current->data;
-        int val = func(&node_val, arg);
-        if(&val){
-            *data = &val;
+    while(current){
+        func(&current->data, &arg);
+        if(*data){
+            *data = current->data;
+                return 0;
+        }  
+        else{
+            *data = current->data;
             return 0;
         }
-    }
+        current = *(current->prev); 
+        }
     return 0;
 }
 
