@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <stdio.h>
 #include "queue.h"
 
 typedef struct node* node_t;
@@ -22,7 +22,7 @@ struct queue
 
 static node_t node_create(void* data)
 {
-    node_t n = malloc(sizeof(node_t));
+    node_t n = (node_t)malloc(sizeof(node_t));
     if (&data == NULL) {
         free(n);
         return(*((node_t*)NULL));
@@ -71,8 +71,8 @@ int queue_enqueue(queue_t queue, void *data)
         node_t tail_node = *queue->tail;
         new_node->prev = tail_node->prev;
         new_node->next = &tail_node;
-        tail_node->prev = &(new_node);
-        queue->tail = &(new_node);
+        tail_node->prev = &new_node;
+        queue->tail = &new_node;
     }
     queue->num_nodes += 1;
     return(0);
@@ -85,26 +85,19 @@ int queue_dequeue(queue_t queue, void **data)
     if (queue == NULL || data == NULL || !oldest_node->data) {
         return(-1);
     }
-    for(int i=0; i <queue_length(queue); i++){
-        if( data == oldest_node->data){
-            if (queue->num_nodes == 1) {
-                queue->head = NULL;
-                queue->tail = NULL;
-            }
-            else {
-                node_t prev_oldest_node = *oldest_node->prev;
-                node_t next_oldest_node = *oldest_node->next;
-                prev_oldest_node->next = &(next_oldest_node);
-                next_oldest_node->prev = &(prev_oldest_node);
-            }
-            free(oldest_node);
-            queue->num_nodes-=1;
-            break;
-        }
-        else{
-            oldest_node = *oldest_node->prev;
-        }
+    *data = oldest_node->data;
+    if (queue->num_nodes == 1) {
+        queue->head = NULL;
+        queue->tail = NULL;
     }
+    else {
+        node_t prev_oldest_node = *oldest_node->prev;
+        node_t next_oldest_node = *oldest_node->next;
+        prev_oldest_node->next = &(next_oldest_node);
+        next_oldest_node->prev = &(prev_oldest_node);
+    }
+    free(oldest_node);
+    queue->num_nodes-=1;
     return(0);
 }
 
@@ -139,18 +132,17 @@ int queue_iterate(queue_t queue, queue_func_t func, void *arg, void **data)
     if(queue == NULL || func == NULL){
         return(-1);
     }
-    node_t current = *(queue->head);
-    while(current){
-        func(&current->data, &arg);
-        if(*data){
-            *data = current->data;
-                return 0;
-        }  
-        else{
-            *data = current->data;
-            return 0;
+    node_t current = *queue->head;
+    while(current != NULL){
+        if(func(&current->data, arg) == 1){
+            printf("ran function\n");
+            if(data != NULL){
+                *data = current->data;
+            }
+            break;
         }
-        current = *(current->prev); 
+        printf("next node\n");
+        current = *current->next; 
         }
     return 0;
 }
