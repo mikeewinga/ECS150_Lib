@@ -13,7 +13,7 @@ int inc_item(void *data, void *arg)
     int inc = (int)(long)arg;
 
     *a += inc;
-
+    //printf("new value: %d\n", *a);
     return 0;
 }
 
@@ -27,6 +27,31 @@ int find_item(void *data, void *arg)
 
     return 0;
 }
+
+void test_iterator(void)
+{
+    queue_t q;
+    int data[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    int i;
+    int *ptr;
+
+    /* Initialize the queue and enqueue items */
+    q = queue_create();
+    for (i = 0; i < sizeof(data) / sizeof(data[0]); i++)
+        queue_enqueue(q, &data[i]);
+
+    /* Add value '1' to every item of the queue */
+    queue_iterate(q, inc_item, (void*)1, NULL);
+    assert(data[0] == 2);
+
+    /* Find and get the item which is equal to value '5' */
+    ptr = NULL;
+    queue_iterate(q, find_item, (void*)5, (void**)&ptr);
+    assert(ptr != NULL);
+    assert(*ptr == 5);
+    assert(ptr == &data[3]);
+}
+
 
 /*
     Queue Test Functions
@@ -78,16 +103,8 @@ int main(){
     printf("======================\n");
 
 // create queue + enqueue + iterate
-    q = queue_create();
-    int y;
-    for (i = 0; i < (sizeof(data) / sizeof(data[0])); i++){
-        y = queue_enqueue(q, &data[i]);
-        //printf("Enqueue returned with [%d]\n", y);
-    }
-        
-    queue_iterate(q, inc_item, (void*)1, NULL);
-    assert(data[0] == 2);
-  
+    test_iterator();
+
     printf("Test Completed\n"); 
     return 0;
 };
