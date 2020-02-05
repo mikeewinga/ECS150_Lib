@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+
 #include "queue.h"
 
 typedef struct node* node_t;
@@ -9,23 +9,23 @@ typedef struct node* node_t;
 struct node
 {
     void* data;
-    node_t* next;
-    node_t* prev;
+    node_t next;
+    node_t prev;
 };
 
 struct queue
 {
-    node_t* head;
-    node_t* tail;
+    node_t head;
+    node_t tail;
     int num_nodes;
 };
 
 static node_t node_create(void* data)
 {
     node_t n = (node_t)malloc(sizeof(node_t));
-    if (&data == NULL) {
+    if (data == NULL) {
         free(n);
-        return(*((node_t*)NULL));
+        return(NULL);
     }
     n->data = data;
     return(n);
@@ -34,8 +34,8 @@ static node_t node_create(void* data)
 queue_t queue_create(void)
 {
     queue_t q = (queue_t)malloc(sizeof(queue_t));
-    q->head = ((node_t*)NULL);
-    q->tail = ((node_t*)NULL);
+    q->head = ((node_t)NULL);
+    q->tail = ((node_t)NULL);
     q->num_nodes = 0;
     if (!q) {
         free(q);
@@ -64,15 +64,15 @@ int queue_enqueue(queue_t queue, void *data)
     if (queue->num_nodes == 0) {
         new_node->prev = NULL;
         new_node->next = NULL;
-        queue->head = &new_node;
-        queue->tail = &new_node;
+        queue->head = new_node;
+        queue->tail = new_node;
     }
     else {
-        node_t tail_node = *queue->tail;
+        node_t tail_node = queue->tail;
         new_node->prev = tail_node->prev;
-        new_node->next = &tail_node;
-        tail_node->prev = &new_node;
-        queue->tail = &new_node;
+        new_node->next = tail_node;
+        tail_node->prev = new_node;
+        queue->tail = new_node;
     }
     queue->num_nodes += 1;
     return(0);
@@ -81,7 +81,7 @@ int queue_enqueue(queue_t queue, void *data)
 int queue_dequeue(queue_t queue, void **data)
 {
     // node at front of the queue
-    node_t oldest_node = *queue->head;
+    node_t oldest_node = queue->head;
     if (queue == NULL || data == NULL || !oldest_node->data) {
         return(-1);
     }
@@ -91,10 +91,10 @@ int queue_dequeue(queue_t queue, void **data)
         queue->tail = NULL;
     }
     else {
-        node_t prev_oldest_node = *oldest_node->prev;
-        node_t next_oldest_node = *oldest_node->next;
-        prev_oldest_node->next = &(next_oldest_node);
-        next_oldest_node->prev = &(prev_oldest_node);
+        node_t prev_oldest_node = oldest_node->prev;
+        node_t next_oldest_node = oldest_node->next;
+        prev_oldest_node->next = next_oldest_node;
+        next_oldest_node->prev = prev_oldest_node;
     }
     free(oldest_node);
     queue->num_nodes-=1;
@@ -106,13 +106,13 @@ int queue_delete(queue_t queue, void *data)
     if (queue == NULL || data == NULL) {
         return(-1);
     }
-    node_t n= *queue->head;
+    node_t n= queue->head;
     while(1){
         if(n->data==data){
-            node_t n_next= *(n->next);
-            node_t n_prev= *(n->prev);
-            n_next->prev= &(n_prev);
-            n_prev->next= &(n_next);
+            node_t n_next= n->next;
+            node_t n_prev= n->prev;
+            n_next->prev= n_prev;
+            n_prev->next= n_next;
             free(n);
             break;
         }
@@ -120,7 +120,7 @@ int queue_delete(queue_t queue, void *data)
             if(n->next == queue->tail){
                 return(-1);
             }
-            n = *(n->next);
+            n = n->next;
             continue;
         }
     }
@@ -132,17 +132,15 @@ int queue_iterate(queue_t queue, queue_func_t func, void *arg, void **data)
     if(queue == NULL || func == NULL){
         return(-1);
     }
-    node_t current = *queue->head;
+    node_t current = queue->head;
     while(current != NULL){
-        if(func(&current->data, arg) == 1){
-            printf("ran function\n");
+        if(func(current->data, arg) == 1){       
             if(data != NULL){
                 *data = current->data;
             }
             break;
         }
-        printf("next node\n");
-        current = *current->next; 
+        current = current->prev; 
         }
     return 0;
 }

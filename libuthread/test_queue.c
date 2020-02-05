@@ -9,7 +9,6 @@
 */
 int inc_item(void *data, void *arg)
 {
-    printf("in fucntion\n");
     int *a = (int*)data;
     int inc = (int)(long)arg;
 
@@ -88,6 +87,7 @@ int main(){
         
     queue_iterate(q, inc_item, (void*)1, NULL);
     assert(data[0] == 2);
-   
+  
+    printf("Test Completed\n"); 
     return 0;
 };
