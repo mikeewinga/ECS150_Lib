@@ -38,18 +38,18 @@ void uthread_yield(void)
 {
     // dequeue the currently running thread
     tcb_t running;
-    queue_dequeue(running_q, running); 
+    queue_dequeue(running_q, (void*)running); 
     // dequeue the next ready thread
     tcb_t ready;
-    queue_dequeue(ready_q, ready);
+    queue_dequeue(ready_q, (void*)ready);
     
     // change their states respectivley
     running->state = READY;
     ready->state = RUNNING;
     
     // enqueue each respectively
-    queue_enqueue(ready_q, running);
-    queue_enqueue(running_q, ready);
+    queue_enqueue(ready_q, (void*)running);
+    queue_enqueue(running_q, (void*)ready);
 
     uthread_ctx_switch(running->context, ready->context);
 }
@@ -58,11 +58,11 @@ uthread_t uthread_self(void)
 {
     tcb_t curr;
     // removes current running tcb
-    queue_dequeue(running_q, curr);
+    queue_dequeue(running_q, (void*)curr);
     // stores current tid in variable
     uthread_t curr_tid = curr->tid;
     // returns tcb back into queue
-    queue_enqueue(running_q, curr);
+    queue_enqueue(running_q, (void*)curr);
     return curr_tid; 
 }
 
@@ -73,21 +73,22 @@ tcb_t init_uthread_mgmt(void)
     blocked_q = queue_create();
     zombie_q = queue_create();
 
-    tcb_t main;
-    main->tid = curr_tid;
+    tcb_t main_t = (tcb_t)malloc(sizeof(tcb_t));
+    main_t->tid = curr_tid;
     curr_tid += 1;
-    main->state = RUNNING;
-    main->stack = uthread_ctx_alloc_stack();
-    uthread_ctx_init(main->context, tcb->stack, void, void);
+    main_t->state = RUNNING;
+    main_t->stack = uthread_ctx_alloc_stack();
+    uthread_ctx_init(main_t->context, main_t->stack, NULL, NULL);
+    return main_t;
 }
 
 int uthread_create(uthread_func_t func, void *arg)
 {   
     if(curr_tid == 0){
-        tcb_t main = init_uthread_mgmt();
+        tcb_t main_t = init_uthread_mgmt();
     }
 
-    tcb_t tcb = malloc(tcb_t);
+    tcb_t tcb = (tcb_t)malloc(sizeof(tcb_t));
     tcb->tid = curr_tid;
     curr_tid += 1;
     tcb->state = READY;
@@ -114,12 +115,11 @@ int uthread_create(uthread_func_t func, void *arg)
  *
  * This function shall never return.
  */
+
 void uthread_exit(int retval)
 {
-    tcb_t running;
-    queue_dequeue(running_q, running);
-    
-    
+    tcb_t running = ;
+    queue_dequeue(running_q, (void*)running);    
 }
 
 /*
@@ -137,18 +137,13 @@ void uthread_exit(int retval)
  * TID of the calling thread, if thread @tid cannot be found, or if thread @tid
  * is already being joined. 0 otherwise.
  */
+
 int uthread_join(uthread_t tid, int *retval)
-{
-    /*
-    Execute an infinite loop in which
-    If there are no more threads which are ready to run in the system, break the loop and return
-    Otherwise simply yield to next available thread
-    */
-   
+{  
 	while(1)
     {
         //check if queue of ready threads is empty, then break
-        if(queue_dequeue(queue_length(ready_q) == 0){
+        if(queue_length(ready_q) == 0){
             break;
 	    }
         //uthread_yield();
