@@ -34,12 +34,6 @@ struct tcb
     int state;
 };
 
-/*
- * uthread_yield - Yield execution
- *
- * This function is to be called from the currently active and running thread in
- * order to yield for other threads to execute.
- */
 void uthread_yield(void)
 {
     // dequeue the currently running thread
@@ -56,12 +50,20 @@ void uthread_yield(void)
     // enqueue each respectively
     queue_enqueue(ready_q, running);
     queue_enqueue(running_q, ready);
+
+    uthread_ctx_switch(running->context, ready->context);
 }
 
 uthread_t uthread_self(void)
 {
-    // need to figure out a way to do this     
-    return 0;
+    tcb_t curr;
+    // removes current running tcb
+    queue_dequeue(running_q, curr);
+    // stores current tid in variable
+    uthread_t curr_tid = curr->tid;
+    // returns tcb back into queue
+    queue_enqueue(running_q, curr);
+    return curr_tid; 
 }
 
 tcb_t init_uthread_mgmt(void)
@@ -85,7 +87,7 @@ int uthread_create(uthread_func_t func, void *arg)
         tcb_t main = init_uthread_mgmt();
     }
 
-    tcb_t tcb;
+    tcb_t tcb = malloc(tcb_t);
     tcb->tid = curr_tid;
     curr_tid += 1;
     tcb->state = READY;
@@ -114,7 +116,10 @@ int uthread_create(uthread_func_t func, void *arg)
  */
 void uthread_exit(int retval)
 {
-    /* TODO Phase 2 */
+    tcb_t running;
+    queue_dequeue(running_q, running);
+    
+    
 }
 
 /*

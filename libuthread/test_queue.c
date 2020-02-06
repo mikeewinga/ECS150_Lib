@@ -7,13 +7,20 @@
 /*
     Iterate Test Functions
 */
+
+int print_q(void *data, void *arg)
+{
+    int *a= (int*)data;
+    printf("%d\n", *a);
+    return 0;
+}
+
 int inc_item(void *data, void *arg)
 {
     int *a = (int*)data;
     int inc = (int)(long)arg;
 
     *a += inc;
-    //printf("new value: %d\n", *a);
     return 0;
 }
 
@@ -24,86 +31,89 @@ int find_item(void *data, void *arg)
 
     if (*a == match)
         return 1;
-
     return 0;
 }
 
-void test_iterator(void)
+int test_iterator(void)
 {
     queue_t q;
     int data[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     int i;
     int *ptr;
 
-    /* Initialize the queue and enqueue items */
     q = queue_create();
     for (i = 0; i < sizeof(data) / sizeof(data[0]); i++)
         queue_enqueue(q, &data[i]);
 
-    /* Add value '1' to every item of the queue */
     queue_iterate(q, inc_item, (void*)1, NULL);
     assert(data[0] == 2);
 
-    /* Find and get the item which is equal to value '5' */
     ptr = NULL;
     queue_iterate(q, find_item, (void*)5, (void**)&ptr);
     assert(ptr != NULL);
     assert(*ptr == 5);
     assert(ptr == &data[3]);
+    return 0;
 }
 
-
-/*
-    Queue Test Functions
-*/
-void test_create(void){
+int test_create(void){
     queue_t q;
     q = queue_create();
     assert(q != NULL);
+    return 0;
 }
 
-void test_queue_simple(void){
+int test_queue_simple(void){
+    int n;
     queue_t q;
     int data = 3, *ptr;
-    int n;
     q = queue_create();
-    n = queue_enqueue(q, &data);
-    printf("(%d) added to queue with return[%d]\n", data, n);
-    queue_dequeue(q, (void**)&ptr);
-    printf("(%d) removed from queue with return[%d]\n", *((int*)ptr), n);
+    queue_enqueue(q, &data);
+    n = queue_dequeue(q, (void**)&ptr);
     assert(ptr == &data);
+    return n;
 }
 
-void bad_destroy(void){
-    int n;
+int bad_destroy(void){
     int data[] = {1,2,3};
     queue_t q;
     q = queue_create();
-    n = queue_enqueue(q, &data[0]);
-    printf("(%d) added to queue with return[%d]\n", data[0], n);
-    n = queue_destroy(q);
-    printf("queue destroyed with return[%d]\n", n);
+    queue_enqueue(q, &data[0]);
+    return (queue_destroy(q));
 }
 
-/*
-    Main
-*/
-int main(){
+int test_delete(void)
+{
     queue_t q;
-    int data[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    int* data[] = {(int*)1, (int*)2, (int*)3, (int*)4, (int*)5, (int*)6};
     int i;
-    int *ptr;
-
-    printf("======================\n");
+    int rtn;
+    q = queue_create();
+    for (i = 0; i < sizeof(data) / sizeof(data[0]); i++)
+        queue_enqueue(q, &data[i]);
+    rtn = queue_delete(q, &data[4]);
     
-    test_queue_simple();
-    printf("======================\n");
+    queue_iterate(q, print_q, (void*)0, NULL);
+    return rtn;
+}
 
-    bad_destroy();
-    printf("======================\n");
+int main(){
+    int rtn;
 
-// create queue + enqueue + iterate
-    test_iterator();
+    rtn = test_create();
+    printf("test_create() completed with %d\n", rtn);
+
+    rtn = test_queue_simple();
+    printf("test_queue_simple() completed with %d\n", rtn);
+
+    rtn = bad_destroy();
+    printf("bad_destroy() completed with %d\n", rtn);
+
+    rtn = test_iterator();
+    printf("test_iterator() completed with %d\n", rtn);
+
+    rtn = test_delete();
+    printf("test_delete() completed with %d\n", rtn);
 
     printf("Test Completed\n"); 
     return 0;

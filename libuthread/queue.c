@@ -106,21 +106,33 @@ int queue_delete(queue_t queue, void *data)
     if (queue == NULL || data == NULL) {
         return(-1);
     }
-    node_t n= queue->head;
+    node_t n = queue->head;
     while(1){
-        if(n->data==data){
-            node_t n_next= n->next;
-            node_t n_prev= n->prev;
-            n_next->prev= n_prev;
-            n_prev->next= n_next;
+        if(n->data == data){
+            if(n != queue->head && n != queue->tail){
+                node_t n_next= n->next;
+                node_t n_prev= n->prev;
+                n_next->prev= n_prev;
+                n_prev->next= n_next;
+            }
+            else if(n == queue->head){
+                node_t n_prev = n->prev;
+                n_prev->next = NULL;
+                queue->head = n_prev;
+            }
+            else {
+                node_t n_next = n->next;
+                n_next->prev = NULL;
+                queue->tail = n_next;
+            }
             free(n);
             break;
         }
         else{
-            if(n->next == queue->tail){
+            if(n->prev == NULL){
                 return(-1);
             }
-            n = n->next;
+            n = n->prev;
             continue;
         }
     }
