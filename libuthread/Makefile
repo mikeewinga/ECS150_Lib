@@ -1,15 +1,26 @@
 # Target library
-lib := libuthread.a
-targets:= queue
-objs := queue.o
-CC:= gcc
-CFLAGS:= -Wall -Wextra -Werror
+lib = libuthread.a
+targets= queue uthread context preempt
+objs = queue.o uthread.o context.o preempt.o
+CC= gcc
+CFLAGS= -Wall -Wextra -Werror
 
-all: $(targets)
+all: $(targets) $(lib)
 
-queue: $(objs)
-    $(CC) $(CFLAGS) -c -o $@ $^
+queue: queue.o
+	$(CC) $(CFLAGS) -c -o $@ $^
 
-all: $(lib)
-    ar rcs libuthread.a. $(objs)
+uthread: $(objs)
+	$(CC) $(CFLAGS) -c -o $@ $^
 
+context: uthread.o context.o preempt.o
+	$(CC) $(CFLAGS) -c -o $@ $^
+
+preempt: uthread.o preempt.o
+	$(CC) $(CFLAGS) -c -o $@ $^
+
+libthread: $(lib)
+	ar rcs libuthread.a $(objs)
+
+clean:
+	rm -f $(targets) *.o

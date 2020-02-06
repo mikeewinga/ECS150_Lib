@@ -13,15 +13,16 @@
 
 // Thread State Macros
 #define READY 1
-#define BLOCKED 2
-#define RUNNING 3
+#define RUNNING 2
+#define BLOCKED 3
 #define ZOMBIE 4
 
-// Globals queues to hold threads of respective states
+// Global Variables
 queue_t ready_q; 
+queue_t running_q;
 queue_t blocked_q;
-queue_t thread_q;
 queue_t zombie_q; 
+uthread_t curr_tid = 0;
 
 typedef struct tcb* tcb_t;
 
@@ -33,47 +34,73 @@ struct tcb
     int state;
 };
 
-/*
- * uthread_yield - Yield execution
- *
- * This function is to be called from the currently active and running thread in
- * order to yield for other threads to execute.
- */
 void uthread_yield(void)
 {
-    /*
-    for this step, sched is non-preemptive and threads must call this function to run next avail thread. 
-    non-compliant threads can keep resources to self
+    // dequeue the currently running thread
+    tcb_t running;
+    queue_dequeue(running_q, (void*)running); 
+    // dequeue the next ready thread
+    tcb_t ready;
+    queue_dequeue(ready_q, (void*)ready);
+    
+    // change their states respectivley
+    running->state = READY;
+    ready->state = RUNNING;
+    
+    // enqueue each respectively
+    queue_enqueue(ready_q, (void*)running);
+    queue_enqueue(running_q, (void*)ready);
 
-    i think we want to
-        dequeue current thread from running queue, change state from RUNNING to READY, enqueue it onto ready queue
-        then dequeue the thread to be yielded to from ready queue, change state from READY to RUNNING, and enqueue onto running queue
-    */
-
-
-   return;
+    uthread_ctx_switch(running->context, ready->context);
 }
 
 uthread_t uthread_self(void)
 {
-    return 0;
+    tcb_t curr;
+    // removes current running tcb
+    queue_dequeue(running_q, (void*)curr);
+    // stores current tid in variable
+    uthread_t curr_tid = curr->tid;
+    // returns tcb back into queue
+    queue_enqueue(running_q, (void*)curr);
+    return curr_tid; 
+}
+
+tcb_t init_uthread_mgmt(void)
+{
+    ready_q = queue_create();
+    running_q = queue_create();
+    blocked_q = queue_create();
+    zombie_q = queue_create();
+
+    tcb_t main_t = (tcb_t)malloc(sizeof(tcb_t));
+    main_t->tid = curr_tid;
+    curr_tid += 1;
+    main_t->state = RUNNING;
+    main_t->stack = uthread_ctx_alloc_stack();
+    uthread_ctx_init(main_t->context, main_t->stack, NULL, NULL);
+    return main_t;
 }
 
 int uthread_create(uthread_func_t func, void *arg)
-{
-    if(thread_q == NULL){
-        thread_q = queue_create();
+{   
+    if(curr_tid == 0){
+        tcb_t main_t = init_uthread_mgmt();
     }
-    tcb_t tcb;
-    tcb->tid = queue_length(thread_q) + 1;
+
+    tcb_t tcb = (tcb_t)malloc(sizeof(tcb_t));
+    tcb->tid = curr_tid;
+    curr_tid += 1;
+    tcb->state = READY;
     tcb->stack = uthread_ctx_alloc_stack();
     uthread_ctx_init(tcb->context, tcb->stack, func, arg);
     if(tcb == NULL){
         return (-1);
     }
-    queue_enqueue(thread_q, tcb);
+    queue_enqueue(ready_q, tcb);
     return tcb->tid;
 }
+
 /*
  * uthread_exit - Exit from currently running thread
  * @retval: Return value
@@ -88,9 +115,11 @@ int uthread_create(uthread_func_t func, void *arg)
  *
  * This function shall never return.
  */
+
 void uthread_exit(int retval)
 {
-    /* TODO Phase 2 */
+    tcb_t running = ;
+    queue_dequeue(running_q, (void*)running);    
 }
 
 /*
@@ -108,26 +137,17 @@ void uthread_exit(int retval)
  * TID of the calling thread, if thread @tid cannot be found, or if thread @tid
  * is already being joined. 0 otherwise.
  */
+
 int uthread_join(uthread_t tid, int *retval)
-{
-    /*
-    Execute an infinite loop in which
-    If there are no more threads which are ready to run in the system, break the loop and return
-    Otherwise simply yield to next available thread
-    */
-   
+{  
 	while(1)
     {
         //check if queue of ready threads is empty, then break
-        if(queue_dequeue(ready_q, (void **)(thread_q)) == -1)
-	    {
+        if(queue_length(ready_q) == 0){
             break;
 	    }
-        //otherwise keep yielding to next avail thread
-        //TODO, idk if we actually call yield 
-        uthread_yield();
+        //uthread_yield();
     }
-	/* TODO Phase 3 */
     return 0;
 }
 
