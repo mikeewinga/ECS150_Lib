@@ -13,15 +13,16 @@
 
 // Thread State Macros
 #define READY 1
-#define BLOCKED 2
-#define RUNNING 3
+#define RUNNING 2
+#define BLOCKED 3
 #define ZOMBIE 4
 
-// Globals queues to hold threads of respective states
+// Global Variables
 queue_t ready_q; 
+queue_t running_q;
 queue_t blocked_q;
-queue_t thread_q;
 queue_t zombie_q; 
+uthread_t curr_tid = 0;
 
 typedef struct tcb* tcb_t;
 
@@ -41,39 +42,62 @@ struct tcb
  */
 void uthread_yield(void)
 {
-    /*
-    for this step, sched is non-preemptive and threads must call this function to run next avail thread. 
-    non-compliant threads can keep resources to self
-
-    i think we want to
-        dequeue current thread from running queue, change state from RUNNING to READY, enqueue it onto ready queue
-        then dequeue the thread to be yielded to from ready queue, change state from READY to RUNNING, and enqueue onto running queue
-    */
-
-
-   return;
+    // dequeue the currently running thread
+    tcb_t running;
+    queue_dequeue(running_q, running); 
+    // dequeue the next ready thread
+    tcb_t ready;
+    queue_dequeue(ready_q, ready);
+    
+    // change their states respectivley
+    running->state = READY;
+    ready->state = RUNNING;
+    
+    // enqueue each respectively
+    queue_enqueue(ready_q, running);
+    queue_enqueue(running_q, ready);
 }
 
 uthread_t uthread_self(void)
 {
+    // need to figure out a way to do this     
     return 0;
 }
 
-int uthread_create(uthread_func_t func, void *arg)
+tcb_t init_uthread_mgmt(void)
 {
-    if(thread_q == NULL){
-        thread_q = queue_create();
+    ready_q = queue_create();
+    running_q = queue_create();
+    blocked_q = queue_create();
+    zombie_q = queue_create();
+
+    tcb_t main;
+    main->tid = curr_tid;
+    curr_tid += 1;
+    main->state = RUNNING;
+    main->stack = uthread_ctx_alloc_stack();
+    uthread_ctx_init(main->context, tcb->stack, void, void);
+}
+
+int uthread_create(uthread_func_t func, void *arg)
+{   
+    if(curr_tid == 0){
+        tcb_t main = init_uthread_mgmt();
     }
+
     tcb_t tcb;
-    tcb->tid = queue_length(thread_q) + 1;
+    tcb->tid = curr_tid;
+    curr_tid += 1;
+    tcb->state = READY;
     tcb->stack = uthread_ctx_alloc_stack();
     uthread_ctx_init(tcb->context, tcb->stack, func, arg);
     if(tcb == NULL){
         return (-1);
     }
-    queue_enqueue(thread_q, tcb);
+    queue_enqueue(ready_q, tcb);
     return tcb->tid;
 }
+
 /*
  * uthread_exit - Exit from currently running thread
  * @retval: Return value
@@ -119,15 +143,11 @@ int uthread_join(uthread_t tid, int *retval)
 	while(1)
     {
         //check if queue of ready threads is empty, then break
-        if(queue_dequeue(ready_q, (void **)(thread_q)) == -1)
-	    {
+        if(queue_dequeue(queue_length(ready_q) == 0){
             break;
 	    }
-        //otherwise keep yielding to next avail thread
-        //TODO, idk if we actually call yield 
-        uthread_yield();
+        //uthread_yield();
     }
-	/* TODO Phase 3 */
     return 0;
 }
 
