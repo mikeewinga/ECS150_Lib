@@ -22,7 +22,7 @@ struct queue
 
 static node_t node_create(void* data)
 {
-    node_t n = (node_t)malloc(sizeof(struct node));
+    node_t n = (node_t)malloc(sizeof(node_t));
     if (data == NULL) {
         free(n);
         return(NULL);
@@ -33,7 +33,7 @@ static node_t node_create(void* data)
 
 queue_t queue_create(void)
 {
-    queue_t q = (queue_t)malloc(sizeof(struct queue));
+    queue_t q = (queue_t)malloc(sizeof(queue_t));
     q->head = ((node_t)NULL);
     q->tail = ((node_t)NULL);
     q->num_nodes = 0;
