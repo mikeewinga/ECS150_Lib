@@ -1,9 +1,5 @@
 # Project #2 - User-level thread library #  
 
-We implemented a basic user-level thread library for Linux.
-
-___
-
 ## Phase 1: queue API ##
 
 * ### Data Structure: Doubly Linked List ###
@@ -51,146 +47,118 @@ ___
     returns an error value upon reaching the tail
   * `queue_iterate` is used to apply a function, one that does not modify the
     queue itself, to each element in the queue from head to tail.
+    * This function could be used to debug queues of threads through printing,
+      but we were unable to use it to its fullest potential outside of queue
+      testing due to time constraints.
   * `queue_length` simply returns the number of nodes in the queue that have
     been incremented and decremented by `queue_enqueue` and `queue_dequeue`
-    respectively. Returns an error if the queue is `NULL`
+    respectively.
 
 * ### Queue Test ###  
 
   * We adopted the approach of unit testing in order to provide a rigorous
-    review of our queue implementation and to identify any edge cases we did not
-    account for.
-  * Test for any return values of -1 in all functions
-  * TODO ADD TESTS  
+    review of our queue implementation.
+  * All operations should be checked for return values of -1 to indicate an
+    error has occurred with the operation
+  * There are currently 5 tests which involve creating, destroying, iterating,
+    and deleting queues as well as performing enqueue and dequeue operations on
+    these queues.
+  * More testing should be done to properly test for edge cases and prevent
+    problems when implementing these queues for the purpose of storing threads.
 
 ___
 
 ## Phase 2: uthread API ##
 
-* ### Thread Definition  ###
+* ### Thread Control Block ###
 
-  * Implemented by setting the exit variable equal to 1 when the exit command is
-    run
-  * This prevents the shell from looping back  
-  * Prints "Bye..."  
+  * `struct tcb` was created in order to store a thread identifier, a pointer to
+    its context, the stack, the state, and a blocked thread id.
+  * The queue API was used to create three queues which were implemented
+    globally including a ready, blocked, and zombie queue which store threads in
+    these respective states
 
-* ### Public API ###
+* ### uthread_create()  ###
 
-  * cd is implemented by using the **chdir** system call that takes directory
-    and changes to that directory  
-  * Contains an error check in case that directory does not exist
-  * pwd is implemented by using the getcwd system call and prints the output
+  * This function creates a thread and initializes the global queues if it is
+    the first thread.
+  * The thread properties are updated in the thread control block including a
+    status change to READY and it is then enqueued into the ready queue
 
-* ### Thread Control Block ###  
+* ### uthread_yield() ###  
 
-  * When parsing the command the program attempts to open the file and on
-    success the file descriptor is stored in the **command struct**
-  * There is also a boolean variable in the **command struct** that reports
-    whether or not there is output redirection  
-  * If there is output redirection and the file descriptor is not **NULL** then
-    when executing our shell will write the output to the file described  
+  * Thread yielding is done first by allocating memory to the next ready thread.
+    * If the current running thread has already been enqueued then the next
+      ready thread is dequeued. Its state is changed to running and the running
+      thread is replaced with the ready one before a context switch to make sure
+      that the context will be changed to the next thread in queue.
+    * If both the running thread and ready thread need to be enqueued then the
+      next ready thread is dequeued and the running thread is stored. Then their
+      states are changed from ready to running and running to ready
+      respectively. The running thread will be enqueued to the ready thread and
+      then replaced with the ready thread. Finally the context will be switched.
 
-## CHANGE AS NEEDED ##  
+* ### uthread_exit() ###  
 
-* ### Fasdasd ###  
+  * Exiting threads would have a temporary TCB created where they would be set
+    to zombie status and then enqueued into the zombie queue before yielding to
+    the next thread
 
-  * When parsing the command the program attempts to open the file and on
-    success the file descriptor is stored in the **command struct**
-  * There is also a boolean variable in the **command struct** that reports
-    whether or not there is output redirection  
-  * If there is output redirection and the file descriptor is not **NULL** then
-    when executing our shell will write the output to the file described  
+## Phase 2/3: uthread_join() ##  
 
-## Piping ##  
-  
-* Each command is stored in an array of size 4 which is the maximum number of
-  pipes possible within our shell plus 1  
-* Each command is executed starting from the first command to the last command
-  in order  
-* For each command we use dup2 to duplicate the read portion of the pipe to
-  STDIN_FILENO and then we close the pipe and open a new pipe  
-* As long as the command is not the last command we use dup2 to duplicate the
-  write portion of the pipe to STDOUT_FILENO. If the user specified piping error
-  redirection then we also set the write portion of the pipe to STDERR_FILENO  
-* If it is the last command, then we restore stdout to STDOUT_FILENO unless the
-  user specified a file output redirection  
-* This has the effect of passing the output of one program to the input of the
-  following program  
+* ### Initial (Phase 2) Design ###
 
-## Error Management ##  
+  * Initial design of `uthread_join` involves an infinite loop which breaks and
+    returns when no more threads are ready to run or yields to the next
+    available thread.
+  * In the current state of the function, a TCB is created for the blocked
+    thread and its `block_tid` is set to the child tid. Its state is then
+    changed and it is enqueued into the blocked queue before we enter the
+    infinite loop.
 
-* ### Failure of Library Functions ###  
+* ### Phase 3 Design Goals ###  
 
-  * Library functions will fail due to inappropriate memory allocation using
-    malloc() which has not occured... yet
+  * Although we were unable to get to phase 3, the design goals included an
+    implementation that would have `uthread_join` properly accommodate the two
+    scenarios in which a thread T1 joins a thread T2 where:
+    * If T2 is an active thread, T1 is blocked until T2 dies and T1 can collect it
+    * If T2 is dead, T1 will not need to be blocked and can be collected right away
+  * Collection involves freeing resources and would allow for proper memory deallocation
+  * We would try to implement proper scheduling by allowing an unblocked T1 to
+    run only after all other runnable threads have run
 
-* ### Standard Error Redirection ###  
+## uthread API Testing ##
 
-  * While parsing the command in addition to checking for the output redirection
-    symbol we also checked for the & symbol immediately after for standard error
-    redirection
-  * If this exists then during piping we will duplicate the pipe to the
-    **STDERR_FILENO** in addition to the **STDOUT_FILENO**  
-  * We also have to store a copy of the default stderr file descriptor so that
-    it is not lost during piping  
+* We were unable to test beyond `uthread_hello` and `uthread_yield` as we were
+  unable to complete these tests themselves due to a seg fault.
 
-## Directory Stack ##  
+___
 
-* ### Stack ###  
+## Reflection ##  
 
-  * A linked list chosen to create a dynamically sized stack that will store
-    remembered directories
-  * dirstack employs two structs **struct node** and **struct stack** which use
-    pointers to track directories going into the stack and the head of the
-    stack, and an int variable to store the size of the stack.  
-  * Debugging by tracing pointers and ensuring proper cstring manipulation  
-    when dealing with directories
-  * Errors handled during parse rather than each individual builtin
-  * Errors involving popping from an empty stack utilized the size of the stack
-    to determine when it is empty  
-
-* ### pushd ###  
-
-  * The command **pushd** and its directory argument are parsed in  
-    **sshell.c**, the directory is pushed onto the stack, and then current
-    working directory is changed using **chdir** to the directory pushed
-  * Error handled when argument is a directory that does not exist by the output
-    of **chdir**  
-
-* ### popd ###  
-
-  * The head of the stack is popped and **chdir** is used to change to the next
-    directory which is now at the head of the stack  
-  * Using the tester we found that we were changing to the wrong directory by  
-    one element of the stack which was debugged by making sure the directory was
-    changed to the new head of the stack, not the directory popped off the
-    stack.
-
-* ### dirs ###  
-
-  * Simple loop printing out directories starting from the head and iterating
-    through each directory pointed to by the **next** pointer until it points to
-    **NULL**
-
-## Reflection and Limitations ##  
-
-* We found that queues were a suitable data structure when dealing with piping
-  but lacked the time to properly incorporate them into the shell. We ended up
-  using an array that has the side effect of only being able to include a fixed
-  amount of pipes.  
+* We found that a singly linked list would be easier to implement, but would not
+  perform insertion in O(1) time.
 * Pointers and programming language C's utilization of memory was a troublesome
   aspect of the assignment which took copious debugging
 * Statically allocated memory to store important data was problematic due to
   overwrite problems and other memory problems when going out of scope for the
   corresponding variable  
 * We got around this by dynamically allocating memory as much as possible
-  instead of statically allocating
-* However this caused memory leaks when not freeing the pointers which had to be
-  meticulously found and fixed  
-* The example program used in class for viewing the file descriptors was
-  extremely helpful for the piping aspect of the assignment. What we thought was
-  going to be a very difficult part turned out to be managable with this tool.
+  instead of statically allocating memory
 
-## Sources ##  
+## Limitations ##  
 
-* [Linked List Stack](https://www.zentut.com/c-tutorial/c-stack-using-pointers/)
+* Tests uthread_hello and uthread_yield were unable to be completed in Phase 2.
+* We were unable to debug `uthread.c` enough to fix a seg fault. Further
+  testing by debugging through gdb and properly tracing pointers and thread
+  memory usage would be vital to fixing this.
+* I (Navjot Mattu) was unable to provide proper support to my partner due to my
+  own personal issues in the timeframe of this project. I think proper planning
+  in the very beginning of a project and timelines on phase completion to allow
+  enough time to fully understand and debug a program despite any personal
+  setbacks is important and would be a priority if I were to have the chance to
+  do this project again.
+
+## References ##
+
+[Make file](http://tldp.org/HOWTO/Program-Library-HOWTO/static-libraries.html)  
