@@ -1,15 +1,15 @@
 # Target library
 target:= libuthread.a
-objs:= queue.o uthread.o context.o preempt.o
+objs:= queue.o context.o preempt.o uthread.o
 CC:= gcc
-CFLAGS:= -Wall -Werror
+CFLAGS:= -Wall -Werror -Wextra
 CFLAGS+= -g
 PANDOC:= pandoc
-deps:= $(patsubst %.o, $.d,$(objs))
+deps:= $(patsubst %.o,%.d,$(objs))
 -include $(deps)
-depflags:= -MMD -M $(@:.o=.d)
+depflags:= -MMD $(@:.o=.d)
 
-ifneq ($(D), 1)
+ifneq ($(V),1)
 Q = @
 endif
 
@@ -19,7 +19,7 @@ $(target): $(objs)
 
 %.o: %.c
 	@echo "CC $@"
-	$(Q)$(CC) -c $(CFLAGS) $< $(depflags)
+	$(Q)$(CC) $(CFLAGS) -c -o $@ $< $(depflags)
 
 clean:
 	@echo "CLEANED"
