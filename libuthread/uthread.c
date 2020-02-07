@@ -98,6 +98,7 @@ int uthread_create(uthread_func_t func, void *arg)
     curr_tid += 1;
     new_tcb->state = READY;
     new_tcb->stack = uthread_ctx_alloc_stack();
+    new_tcb->context = (uthread_ctx_t*)malloc(sizeof(uthread_ctx_t));
     uthread_ctx_init(new_tcb->context, new_tcb->stack, func, arg);
     new_tcb->block_tid = 0;
     if(new_tcb == NULL){
