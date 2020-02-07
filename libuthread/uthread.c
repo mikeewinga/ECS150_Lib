@@ -17,13 +17,6 @@
 #define BLOCKED 3
 #define ZOMBIE 4
 
-// Global Variables
-queue_t ready_q; 
-queue_t running_q;
-queue_t blocked_q;
-queue_t zombie_q; 
-uthread_t curr_tid = 0;
-
 typedef struct tcb* tcb_t;
 
 struct tcb
@@ -32,72 +25,76 @@ struct tcb
     uthread_ctx_t* context;
     void* stack;
     int state;
+    uthread_t block_tid;
 };
+
+// Global Variables
+queue_t ready_q; 
+tcb_t running_t;
+queue_t blocked_q;
+queue_t zombie_q; 
+uthread_t curr_tid = 1;
+uthread_t join_tid = 0;
 
 void uthread_yield(void)
 {
-    // dequeue the currently running thread
-    tcb_t running;
-    queue_dequeue(running_q, (void*)running); 
-    // dequeue the next ready thread
-    tcb_t ready;
-    queue_dequeue(ready_q, (void*)ready);
-    
-    // change their states respectivley
-    running->state = READY;
-    ready->state = RUNNING;
-    
-    // enqueue each respectively
-    queue_enqueue(ready_q, (void*)running);
-    queue_enqueue(running_q, (void*)ready);
-
-    uthread_ctx_switch(running->context, ready->context);
+    tcb_t ready=(tcb_t)malloc(sizeof(tcb_t));
+    if(running_t->state == BLOCKED){
+        tcb_t blocked=(tcb_t)malloc(sizeof(tcb_t));
+        blocked = running_t; 
+        // dequeue the next ready thread
+        queue_dequeue(ready_q, (void**)ready);
+        // change their states respct.
+        ready->state = RUNNING;
+        running_t = ready;
+        uthread_ctx_switch(blocked->context, running_t->context);
+    }
+    else{
+        tcb_t yielding=(tcb_t)malloc(sizeof(tcb_t)); 
+        // dequeue the next ready thread
+        queue_dequeue(ready_q, (void**)ready);
+        // store the running thread
+        yielding = running_t;
+        // change their states respct.
+        running_t->state = READY;
+        ready->state = RUNNING;
+        // move the threads
+        queue_enqueue(ready_q, running_t);
+        running_t = ready;
+        uthread_ctx_switch(yielding->context, running_t->context);
+    }
 }
 
 uthread_t uthread_self(void)
 {
-    tcb_t curr;
-    // removes current running tcb
-    queue_dequeue(running_q, (void*)curr);
-    // stores current tid in variable
-    uthread_t curr_tid = curr->tid;
-    // returns tcb back into queue
-    queue_enqueue(running_q, (void*)curr);
-    return curr_tid; 
+    return running_t->tid; 
 }
 
-tcb_t init_uthread_mgmt(void)
+void init_uthread_mgmt(void)
 {
     ready_q = queue_create();
-    running_q = queue_create();
     blocked_q = queue_create();
     zombie_q = queue_create();
-
-    tcb_t main_t = (tcb_t)malloc(sizeof(tcb_t));
-    main_t->tid = curr_tid;
-    curr_tid += 1;
-    main_t->state = RUNNING;
-    main_t->stack = uthread_ctx_alloc_stack();
-    uthread_ctx_init(main_t->context, main_t->stack, NULL, NULL);
-    return main_t;
+    running_t = (tcb_t)malloc(sizeof(tcb_t));
 }
 
 int uthread_create(uthread_func_t func, void *arg)
 {   
-    if(curr_tid == 0){
-        tcb_t main_t = init_uthread_mgmt();
+    if(curr_tid < 2){
+        init_uthread_mgmt();
     }
-
     tcb_t tcb = (tcb_t)malloc(sizeof(tcb_t));
     tcb->tid = curr_tid;
     curr_tid += 1;
     tcb->state = READY;
     tcb->stack = uthread_ctx_alloc_stack();
     uthread_ctx_init(tcb->context, tcb->stack, func, arg);
+    tcb->block_tid = 0;
     if(tcb == NULL){
         return (-1);
     }
-    queue_enqueue(ready_q, tcb);
+
+    queue_enqueue(ready_q, &tcb);
     return tcb->tid;
 }
 
@@ -118,8 +115,26 @@ int uthread_create(uthread_func_t func, void *arg)
 
 void uthread_exit(int retval)
 {
-    tcb_t running = ;
-    queue_dequeue(running_q, (void*)running);    
+    if(retval == 0){
+        // remove next ready thread
+        tcb_t ready=(tcb_t)malloc(sizeof(tcb_t));
+        tcb_t completed;
+        queue_dequeue(ready_q, (void**)ready);
+        completed = running_t;
+        // change the states of each thread respct.
+        running_t->state = ZOMBIE;
+        ready->state = RUNNING;
+        // place each thread to their new position
+        queue_enqueue(zombie_q, completed);
+        running_t = ready;
+
+        /*if(completed->block_tid != 0){
+            uthread_join()
+        }*/
+
+        // switch context
+        uthread_ctx_switch(completed->context, running_t->context);    
+    }
 }
 
 /*
@@ -140,14 +155,31 @@ void uthread_exit(int retval)
 
 int uthread_join(uthread_t tid, int *retval)
 {  
+    tcb_t blocked;
+    running_t->state = BLOCKED;
+    blocked = running_t;
+    queue_enqueue(blocked_q, blocked);
 	while(1)
     {
-        //check if queue of ready threads is empty, then break
-        if(queue_length(ready_q) == 0){
+        /*        
+        if(join_tid != 0){
             break;
 	    }
-        //uthread_yield();
+        else{
+            uthread_yield();
+        }
+        */
+        if(queue_length(ready_q) == 0){
+            break;
+        }
+        else{
+            uthread_yield();        
+        }
     }
-    return 0;
+    tid += 1;
+    tid -= 1;
+    *retval += 1;
+    *retval -= 1;
+    return *retval;
 }
 

@@ -1,26 +1,26 @@
 # Target library
-lib = libuthread.a
-targets= queue uthread context preempt
-objs = queue.o uthread.o context.o preempt.o
-CC= gcc
-CFLAGS= -Wall -Wextra -Werror
+target:= libuthread.a
+objs:= queue.o uthread.o context.o preempt.o
+CC:= gcc
+CFLAGS:= -Wall -Werror
+CFLAGS+= -g
+PANDOC:= pandoc
+deps:= $(patsubst %.o, $.d,$(objs))
+-include $(deps)
+depflags:= -MMD -M $(@:.o=.d)
 
-all: $(targets) $(lib)
+ifneq ($(D), 1)
+Q = @
+endif
 
-queue: queue.o
-	$(CC) $(CFLAGS) -c -o $@ $^
+$(target): $(objs)
+	@echo "AR $(target)"
+	$(Q)ar rcs $(target) $(objs)
 
-uthread: $(objs)
-	$(CC) $(CFLAGS) -c -o $@ $^
-
-context: uthread.o context.o preempt.o
-	$(CC) $(CFLAGS) -c -o $@ $^
-
-preempt: uthread.o preempt.o
-	$(CC) $(CFLAGS) -c -o $@ $^
-
-libthread: $(lib)
-	ar rcs libuthread.a $(objs)
+%.o: %.c
+	@echo "CC $@"
+	$(Q)$(CC) -c $(CFLAGS) $< $(depflags)
 
 clean:
-	rm -f $(targets) *.o
+	@echo "CLEANED"
+	$(Q) rm -f $(target) $(objs) $(deps) 
