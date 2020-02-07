@@ -37,14 +37,12 @@ uthread_t curr_tid = 1;
 
 void uthread_yield(void)
 {
-    // TCB that will hold the next ready thread
-    tcb_t ready = (tcb_t)malloc(sizeof(struct tcb));
     // if the currently running thread has already been enqueued
     if(running_t->state == BLOCKED || running_t->state == ZOMBIE){
-        tcb_t current_thread = (tcb_t)malloc(sizeof(struct tcb));
-        current_thread = running_t; 
+        tcb_t ready = running_t;
+        tcb_t current_thread = running_t;
         // dequeue the next ready thread
-        queue_dequeue(ready_q, (void**)ready);
+        queue_dequeue(ready_q, (void**) ready);
         // change its state
         ready->state = RUNNING;
         // replace the running thread with the ready one
@@ -54,16 +52,16 @@ void uthread_yield(void)
     }
     // if both running and ready threads need to be enqueued
     else{
-        tcb_t yielding = (tcb_t)malloc(sizeof(struct tcb)); 
+        tcb_t ready = running_t; 
         // dequeue the next ready thread
         queue_dequeue(ready_q, (void**)ready);
         // store the running thread
-        yielding = running_t;
+        tcb_t yielding = running_t;
         // change their states respctively
         running_t->state = READY;
         ready->state = RUNNING;
         // enqueue running thread into ready
-        queue_enqueue(ready_q, running_t);
+        queue_enqueue(ready_q, (void*)running_t);
         // replace running thread with ready thread
         running_t = ready;
         //context switch
@@ -104,38 +102,33 @@ int uthread_create(uthread_func_t func, void *arg)
     if(new_tcb == NULL){
         return (-1);
     }
-    queue_enqueue(ready_q, new_tcb);
+    queue_enqueue(ready_q, (void*)new_tcb);
     return new_tcb->tid;
 }
 
 void uthread_exit(int retval)
 {
-    // if the function returned good
-    if(retval == 0){
-        // create a TCB for the just-completed thread
-        tcb_t completed = (tcb_t)malloc(sizeof(struct tcb));
-        // set its state
-        running_t->state = ZOMBIE;
-        // store into new TCB
-        completed = running_t;
-        // enqueue into zombie queue
-        queue_enqueue(zombie_q,completed);
-        // yield to next thread
-        uthread_yield();
-    }
+    // create a TCB for the just-completed thread
+    tcb_t completed;
+    // set its state
+    running_t->state = ZOMBIE;
+    // store into new TCB
+    completed = running_t;
+    // enqueue into zombie queue
+    queue_enqueue(zombie_q, (void*)completed);
+    // yield to next thread
+    uthread_join(completed->tid, &retval);
 }
 
 int uthread_join(uthread_t tid, int *retval)
 {  
     // create a TCB for the blocked thread
-    tcb_t blocked = (tcb_t)malloc(sizeof(struct tcb));
+    tcb_t blocked;
     running_t->state = BLOCKED;
     // set its block_tid to child tid
     running_t->block_tid = tid;
     // change its state
     blocked = running_t;
-    // enqueue into blocked queue
-    queue_enqueue(blocked_q, blocked);
 	while(1)
     {
      /* for later use in phase 3
@@ -146,10 +139,15 @@ int uthread_join(uthread_t tid, int *retval)
         else{
             uthread_yield();
         } */
-        if(queue_length(ready_q) == 0){
+        if(blocked->tid == tid){
+            tcb_t zombie = running_t;
+            queue_dequeue(zombie_q, (void**)zombie);
+            uthread_ctx_destroy_stack(zombie->stack);
+            free(zombie);
             break;
         }
         else{
+            queue_enqueue(blocked_q, (void*)blocked);
             uthread_yield();        
         }
     }
