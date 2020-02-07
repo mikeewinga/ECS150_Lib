@@ -130,7 +130,11 @@ ___
 ## uthread API Testing ##
 
 * We were unable to test beyond `uthread_hello` and `uthread_yield` as we were
-  unable to complete these tests themselves due to a seg fault.
+  unable to complete these tests themselves due to a seg fault. Upon further 
+  debugging of the seg fault, it was found that the thread being passes into the
+  ready queue had its data changed after it was dequeued. Because of this, it is 
+  believed that the either the parameter passed into the queue were bad or our queue
+  itself was to blame for the data corruption.
 
 ___
 
